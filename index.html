@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Digital Lacrosse Playbook</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header>
+    <h1 id="playbook-title">Your Playbook</h1>
+    <input type="text" id="username-input" placeholder="Enter your name" />
+  </header>
+
+  <main>
+    <section id="controls">
+      <select id="mode-select">
+        <option value="offense">Offense</option>
+        <option value="defense">Defense</option>
+      </select>
+
+      <button id="add-red-player">Add Red Player</button>
+      <button id="add-blue-player">Add Blue Player</button>
+      <button id="toggle-red-team">Toggle Red Team</button>
+      <button id="toggle-blue-team">Toggle Blue Team</button>
+      <button id="add-ball">Add Ball</button>
+      <button id="add-solid-arrow">Add Solid Arrow</button>
+      <button id="add-dashed-arrow">Add Dashed Arrow</button>
+      <button id="add-pick">Add Pick</button>
+      <button id="add-shot">Add Shot</button>
+      <button id="add-zone">Add Zone</button>
+      <button id="add-hot-slide">Add Hot Slide</button>
+      <button id="add-second-slide">Add Second Slide</button>
+      <button id="add-third-slide">Add Third Slide</button>
+      <button id="clear-board">Clear Board</button>
+      <button id="save-play">Save Play</button>
+      <button id="load-play">Load Play</button>
+      <button id="export-play">Export Play</button>
+    </section>
+
+    <section id="play-area">
+      <canvas id="field-canvas" width="1000" height="600"></canvas>
+    </section>
+
+    <footer>
+      <p>💾 Save & Share your plays!</p>
+    </footer>
+  </main>
+
+  <script src="script.js"></script>
+</body>
+</html>
