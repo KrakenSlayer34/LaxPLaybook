@@ -66,28 +66,35 @@ document.getElementById("toolbar-radius").addEventListener("input", e => {
 
 // === Save/Load Functions ===
 function savePlay() {
-  const data = JSON.stringify({ redPlayers, bluePlayers, arrows, picks, zones, slides, ball });
-  localStorage.setItem("savedPlay", data);
-  alert("Play saved.");
+  try {
+    const data = JSON.stringify({ redPlayers, bluePlayers, arrows, picks, zones, slides, ball });
+    localStorage.setItem("savedPlay", data);
+    alert("Play saved.");
+  } catch (error) {
+    alert("Failed to save play: " + error.message);
+  }
 }
 
 function loadPlay() {
-  const data = localStorage.getItem("savedPlay");
-  if (data) {
-    const parsed = JSON.parse(data);
-    redPlayers = parsed.redPlayers || [];
-    bluePlayers = parsed.bluePlayers || [];
-    arrows = parsed.arrows || [];
-    picks = parsed.picks || [];
-    zones = parsed.zones || [];
-    slides = parsed.slides || [];
-    ball = parsed.ball || null;
-    draw();
+  try {
+    const data = localStorage.getItem("savedPlay");
+    if (data) {
+      const parsed = JSON.parse(data);
+      redPlayers = parsed.redPlayers || [];
+      bluePlayers = parsed.bluePlayers || [];
+      arrows = parsed.arrows || [];
+      picks = parsed.picks || [];
+      zones = parsed.zones || [];
+      slides = parsed.slides || [];
+      ball = parsed.ball || null;
+      draw();
+    }
+  } catch (error) {
+    alert("Failed to load play: " + error.message);
   }
 }
 
 function exportPlay() {
-  // Temporarily hide control points
   const tempDraw = draw;
   draw = () => {
     drawBoard(true);
@@ -136,12 +143,36 @@ canvas.addEventListener("dblclick", e => {
   const y = e.clientY - rect.top;
   for (let player of [...redPlayers, ...bluePlayers]) {
     if (Math.hypot(player.x - x, player.y - y) < 15) {
-      const name = prompt("Edit player label:", player.label || "");
-      if (name !== null) {
-        player.label = name;
+      const input = document.createElement("input");
+      input.type = "text";
+      input.value = player.label || "";
+      input.style.position = "absolute";
+      input.style.left = `${e.clientX}px`;
+      input.style.top = `${e.clientY}px`;
+      input.style.zIndex = 1001;
+      input.style.fontSize = "14px";
+      document.body.appendChild(input);
+      input.focus();
+      input.addEventListener("blur", () => {
+        player.label = input.value;
+        document.body.removeChild(input);
         draw();
-      }
+      });
       return;
     }
   }
 });
+
+// === Add Arrowhead Drawing Helper ===
+function drawArrowhead(fromX, fromY, toX, toY, size = 10, color = "black") {
+  const angle = Math.atan2(toY - fromY, toX - fromX);
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.moveTo(toX, toY);
+  ctx.lineTo(toX - size * Math.cos(angle - Math.PI / 6), toY - size * Math.sin(angle - Math.PI / 6));
+  ctx.lineTo(toX - size * Math.cos(angle + Math.PI / 6), toY - size * Math.sin(angle + Math.PI / 6));
+  ctx.closePath();
+  ctx.fill();
+}
+
+// Use drawArrowhead wherever arrowheads are needed in your draw() function.
