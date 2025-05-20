@@ -2,7 +2,6 @@ const canvas = document.getElementById('field-canvas');
 const ctx = canvas.getContext('2d');
 
 const modeSelect = document.getElementById('mode-select');
-const usernameInput = document.getElementById('username-input');
 
 const redPlayers = [];
 const bluePlayers = [];
@@ -10,19 +9,46 @@ let ball = null;
 const arrows = [];
 const picks = [];
 
+let zone = null; // {x, y, radius}
+
 let showRed = true;
 let showBlue = true;
 
 const PLAYER_RADIUS = 15;
 const BALL_RADIUS = 10;
+const ZONE_MIN_RADIUS = 30;
 
-// Helper to redraw everything
+let dragTarget = null;
+let dragType = null; // 'redPlayer', 'bluePlayer', 'arrowStart', 'arrowEnd', 'zoneCenter', 'zoneEdge'
+let dragOffsetX = 0;
+let dragOffsetY = 0;
+
 function draw() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  // Draw zones, shots, slides if implemented (placeholders)
-  // For now, just draw players, ball, arrows, picks.
+  // Draw zone first if exists
+  if (zone) {
+    ctx.beginPath();
+    ctx.fillStyle = 'rgba(128, 0, 128, 0.2)'; // light purple, semi-transparent
+    ctx.strokeStyle = 'purple';
+    ctx.lineWidth = 2;
+    ctx.arc(zone.x, zone.y, zone.radius, 0, 2 * Math.PI);
+    ctx.fill();
+    ctx.stroke();
+  }
 
+  // Draw picks
+  picks.forEach(p => drawPick(p));
+
+  // Draw arrows
+  arrows.forEach(a => drawArrow(a));
+
+  // Draw ball
+  if (ball) {
+    drawBall(ball.x, ball.y);
+  }
+
+  // Draw players on top
   if (showRed) {
     redPlayers.forEach(p => drawPlayer(p.x, p.y, 'red'));
   }
@@ -30,13 +56,6 @@ function draw() {
   if (showBlue) {
     bluePlayers.forEach(p => drawPlayer(p.x, p.y, 'blue'));
   }
-
-  if (ball) {
-    drawBall(ball.x, ball.y);
-  }
-
-  arrows.forEach(a => drawArrow(a));
-  picks.forEach(p => drawPick(p));
 }
 
 function drawPlayer(x, y, color) {
@@ -73,7 +92,7 @@ function drawArrow({ fromX, fromY, toX, toY, dashed }) {
   ctx.stroke();
 
   // Draw arrowhead
-  const headlen = 10; // length of head in pixels
+  const headlen = 10;
   const angle = Math.atan2(toY - fromY, toX - fromX);
   ctx.beginPath();
   ctx.moveTo(toX, toY);
@@ -94,7 +113,6 @@ function drawPick({ x1, y1, x2, y2 }) {
   ctx.stroke();
 }
 
-// Utility to get random position on canvas, inside margins
 function randomPosition() {
   const margin = 50;
   return {
@@ -103,39 +121,174 @@ function randomPosition() {
   };
 }
 
-// Add red player
+// Hit detection helpers
+
+function distance(x1, y1, x2, y2) {
+  return Math.hypot(x2 - x1, y2 - y1);
+}
+
+function findPlayerAt(x, y, team) {
+  const players = team === 'red' ? redPlayers : bluePlayers;
+  return players.find(p => distance(p.x, p.y, x, y) <= PLAYER_RADIUS);
+}
+
+function findArrowEndpointAt(x, y) {
+  for (let i = 0; i < arrows.length; i++) {
+    const a = arrows[i];
+    if (distance(a.fromX, a.fromY, x, y) <= 10) return { arrow: a, type: 'start' };
+    if (distance(a.toX, a.toY, x, y) <= 10) return { arrow: a, type: 'end' };
+  }
+  return null;
+}
+
+function isInZoneCenter(x, y) {
+  if (!zone) return false;
+  return distance(x, y, zone.x, zone.y) <= zone.radius;
+}
+
+function isOnZoneEdge(x, y) {
+  if (!zone) return false;
+  const dist = distance(x, y, zone.x, zone.y);
+  return Math.abs(dist - zone.radius) <= 10;
+}
+
+// Mouse handling
+
+canvas.addEventListener('mousedown', (e) => {
+  const rect = canvas.getBoundingClientRect();
+  const mouseX = e.clientX - rect.left;
+  const mouseY = e.clientY - rect.top;
+
+  // Check zone edge first (resize)
+  if (zone && isOnZoneEdge(mouseX, mouseY)) {
+    dragTarget = zone;
+    dragType = 'zoneEdge';
+    return;
+  }
+
+  // Check zone center (move)
+  if (zone && isInZoneCenter(mouseX, mouseY)) {
+    dragTarget = zone;
+    dragType = 'zoneCenter';
+    dragOffsetX = mouseX - zone.x;
+    dragOffsetY = mouseY - zone.y;
+    return;
+  }
+
+  // Check players red
+  if (showRed) {
+    for (let p of redPlayers) {
+      if (distance(mouseX, mouseY, p.x, p.y) <= PLAYER_RADIUS) {
+        dragTarget = p;
+        dragType = 'redPlayer';
+        dragOffsetX = mouseX - p.x;
+        dragOffsetY = mouseY - p.y;
+        return;
+      }
+    }
+  }
+
+  // Check players blue
+  if (showBlue) {
+    for (let p of bluePlayers) {
+      if (distance(mouseX, mouseY, p.x, p.y) <= PLAYER_RADIUS) {
+        dragTarget = p;
+        dragType = 'bluePlayer';
+        dragOffsetX = mouseX - p.x;
+        dragOffsetY = mouseY - p.y;
+        return;
+      }
+    }
+  }
+
+  // Check ball
+  if (ball && distance(mouseX, mouseY, ball.x, ball.y) <= BALL_RADIUS) {
+    dragTarget = ball;
+    dragType = 'ball';
+    dragOffsetX = mouseX - ball.x;
+    dragOffsetY = mouseY - ball.y;
+    return;
+  }
+
+  // Check arrow endpoints
+  const arrowHit = findArrowEndpointAt(mouseX, mouseY);
+  if (arrowHit) {
+    dragTarget = arrowHit.arrow;
+    dragType = arrowHit.type === 'start' ? 'arrowStart' : 'arrowEnd';
+    dragOffsetX = mouseX - (dragType === 'arrowStart' ? dragTarget.fromX : dragTarget.toX);
+    dragOffsetY = mouseY - (dragType === 'arrowStart' ? dragTarget.fromY : dragTarget.toY);
+    return;
+  }
+});
+
+canvas.addEventListener('mousemove', (e) => {
+  if (!dragTarget) return;
+  const rect = canvas.getBoundingClientRect();
+  const mouseX = e.clientX - rect.left;
+  const mouseY = e.clientY - rect.top;
+
+  if (dragType === 'redPlayer' || dragType === 'bluePlayer') {
+    dragTarget.x = mouseX - dragOffsetX;
+    dragTarget.y = mouseY - dragOffsetY;
+  } else if (dragType === 'ball') {
+    dragTarget.x = mouseX - dragOffsetX;
+    dragTarget.y = mouseY - dragOffsetY;
+  } else if (dragType === 'arrowStart') {
+    dragTarget.fromX = mouseX - dragOffsetX;
+    dragTarget.fromY = mouseY - dragOffsetY;
+  } else if (dragType === 'arrowEnd') {
+    dragTarget.toX = mouseX - dragOffsetX;
+    dragTarget.toY = mouseY - dragOffsetY;
+  } else if (dragType === 'zoneCenter') {
+    dragTarget.x = mouseX - dragOffsetX;
+    dragTarget.y = mouseY - dragOffsetY;
+  } else if (dragType === 'zoneEdge') {
+    // Calculate new radius
+    const newRadius = distance(mouseX, mouseY, zone.x, zone.y);
+    zone.radius = Math.max(newRadius, ZONE_MIN_RADIUS);
+  }
+  draw();
+});
+
+canvas.addEventListener('mouseup', () => {
+  dragTarget = null;
+  dragType = null;
+});
+
+canvas.addEventListener('mouseleave', () => {
+  dragTarget = null;
+  dragType = null;
+});
+
+// Button functionality
+
 document.getElementById('add-red-player').addEventListener('click', () => {
   const pos = randomPosition();
   redPlayers.push(pos);
   draw();
 });
 
-// Add blue player
 document.getElementById('add-blue-player').addEventListener('click', () => {
   const pos = randomPosition();
   bluePlayers.push(pos);
   draw();
 });
 
-// Toggle red team visibility
 document.getElementById('toggle-red-team').addEventListener('click', () => {
   showRed = !showRed;
   draw();
 });
 
-// Toggle blue team visibility
 document.getElementById('toggle-blue-team').addEventListener('click', () => {
   showBlue = !showBlue;
   draw();
 });
 
-// Add ball
 document.getElementById('add-ball').addEventListener('click', () => {
   ball = randomPosition();
   draw();
 });
 
-// Add solid arrow: For demo, arrow from random red to random blue player if exist
 document.getElementById('add-solid-arrow').addEventListener('click', () => {
   if (redPlayers.length === 0 || bluePlayers.length === 0) {
     alert('Need at least one red and one blue player to add an arrow');
@@ -147,7 +300,6 @@ document.getElementById('add-solid-arrow').addEventListener('click', () => {
   draw();
 });
 
-// Add dashed arrow (same logic but dashed)
 document.getElementById('add-dashed-arrow').addEventListener('click', () => {
   if (redPlayers.length === 0 || bluePlayers.length === 0) {
     alert('Need at least one red and one blue player to add an arrow');
@@ -159,7 +311,6 @@ document.getElementById('add-dashed-arrow').addEventListener('click', () => {
   draw();
 });
 
-// Add pick: draw a purple line between two random red players or blue players if possible
 document.getElementById('add-pick').addEventListener('click', () => {
   let team = null;
   if (redPlayers.length >= 2) team = redPlayers;
@@ -179,17 +330,26 @@ document.getElementById('add-pick').addEventListener('click', () => {
   draw();
 });
 
-// Clear board
+document.getElementById('add-zone').addEventListener('click', () => {
+  // If zone exists, just do nothing or replace
+  zone = {
+    x: canvas.width / 2,
+    y: canvas.height / 2,
+    radius: 100,
+  };
+  draw();
+});
+
 document.getElementById('clear-board').addEventListener('click', () => {
   redPlayers.length = 0;
   bluePlayers.length = 0;
   ball = null;
   arrows.length = 0;
   picks.length = 0;
+  zone = null;
   draw();
 });
 
-// Save play to localStorage
 document.getElementById('save-play').addEventListener('click', () => {
   const playData = {
     redPlayers,
@@ -197,12 +357,12 @@ document.getElementById('save-play').addEventListener('click', () => {
     ball,
     arrows,
     picks,
+    zone,
   };
   localStorage.setItem('savedPlay', JSON.stringify(playData));
   alert('Play saved!');
 });
 
-// Load play from localStorage
 document.getElementById('load-play').addEventListener('click', () => {
   const saved = localStorage.getItem('savedPlay');
   if (!saved) {
@@ -220,10 +380,10 @@ document.getElementById('load-play').addEventListener('click', () => {
   ball = playData.ball;
   arrows.push(...playData.arrows);
   picks.push(...playData.picks);
+  zone = playData.zone || null;
   draw();
 });
 
-// Export play as image
 document.getElementById('export-play').addEventListener('click', () => {
   const link = document.createElement('a');
   link.download = 'lacrosse-play.png';
@@ -231,5 +391,6 @@ document.getElementById('export-play').addEventListener('click', () => {
   link.click();
 });
 
-draw(); // initial draw to clear canvas
+draw();
+
 
