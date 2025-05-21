@@ -15,12 +15,72 @@ let selectedElement = null;
 let currentMouse = { x: 0, y: 0 };
 let controlPointSize = 6;
 
-let undoStack = [];
-let redoStack = [];
-
 canvas.addEventListener("mousedown", onMouseDown);
 canvas.addEventListener("mousemove", onMouseMove);
 canvas.addEventListener("mouseup", onMouseUp);
+
+document.getElementById("add-red-player").addEventListener("click", () => {
+  redPlayers.push({ x: 100, y: 100, team: "red", label: "R" + (redPlayers.length + 1) });
+  draw();
+});
+
+document.getElementById("add-blue-player").addEventListener("click", () => {
+  bluePlayers.push({ x: 200, y: 100, team: "blue", label: "B" + (bluePlayers.length + 1) });
+  draw();
+});
+
+document.getElementById("add-ball").addEventListener("click", () => {
+  ball = { x: 150, y: 150 };
+  draw();
+});
+
+document.getElementById("add-zone").addEventListener("click", () => {
+  zones.push({ x: 300, y: 200, radius: 50 });
+  draw();
+});
+
+document.getElementById("add-pick").addEventListener("click", () => {
+  picks.push({ x: 350, y: 200 });
+  draw();
+});
+
+function addArrow(type) {
+  let color = "black", label = "";
+  if (type === "shot") color = "red";
+  if (type === "slide1") label = "1";
+  if (type === "slide2") label = "2";
+  if (type === "slide3") label = "3";
+  const arrow = {
+    x1: 100,
+    y1: 300,
+    x2: 200,
+    y2: 300,
+    cpX: 150,
+    cpY: 250,
+    color,
+    label
+  };
+  (type.includes("slide") || type === "shot") ? slides.push(arrow) : arrows.push(arrow);
+  draw();
+}
+
+document.getElementById("add-solid-arrow").addEventListener("click", () => addArrow("solid"));
+document.getElementById("add-dashed-arrow").addEventListener("click", () => addArrow("dashed"));
+document.getElementById("add-shot").addEventListener("click", () => addArrow("shot"));
+document.getElementById("add-hot-slide").addEventListener("click", () => addArrow("slide1"));
+document.getElementById("add-second-slide").addEventListener("click", () => addArrow("slide2"));
+document.getElementById("add-third-slide").addEventListener("click", () => addArrow("slide3"));
+
+document.getElementById("clear-board").addEventListener("click", () => {
+  redPlayers = [];
+  bluePlayers = [];
+  arrows = [];
+  picks = [];
+  zones = [];
+  slides = [];
+  ball = null;
+  draw();
+});
 
 function distance(x1, y1, x2, y2) {
   return Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2);
@@ -102,18 +162,16 @@ function drawArrow(ctx, x1, y1, x2, y2, cpX, cpY, color = "black", label = "") {
   ctx.quadraticCurveTo(cpX, cpY, x2, y2);
   ctx.stroke();
 
-  // Draw arrowhead
   const angle = Math.atan2(y2 - cpY, x2 - cpX);
   const size = 10;
   ctx.beginPath();
   ctx.moveTo(x2, y2);
   ctx.lineTo(x2 - size * Math.cos(angle - Math.PI / 6), y2 - size * Math.sin(angle - Math.PI / 6));
   ctx.lineTo(x2 - size * Math.cos(angle + Math.PI / 6), y2 - size * Math.sin(angle + Math.PI / 6));
-  ctx.lineTo(x2, y2);
+  ctx.closePath();
   ctx.fillStyle = color;
   ctx.fill();
 
-  // Draw label if any
   if (label) {
     ctx.fillStyle = color;
     ctx.font = "bold 14px Arial";
@@ -173,5 +231,3 @@ function draw() {
 }
 
 draw();
-
-
