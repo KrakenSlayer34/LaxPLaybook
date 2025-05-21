@@ -91,6 +91,90 @@ function clearBoard() {
   draw();
 }
 
+function drawArrowhead(fromX, fromY, toX, toY, size = 10, color = "black") {
+  const angle = Math.atan2(toY - fromY, toX - fromX);
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.moveTo(toX, toY);
+  ctx.lineTo(toX - size * Math.cos(angle - Math.PI / 6), toY - size * Math.sin(angle - Math.PI / 6));
+  ctx.lineTo(toX - size * Math.cos(angle + Math.PI / 6), toY - size * Math.sin(angle + Math.PI / 6));
+  ctx.closePath();
+  ctx.fill();
+}
+
+function draw() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  redPlayers.filter(p => p.visible).forEach(p => drawPlayer(p, 'red'));
+  bluePlayers.filter(p => p.visible).forEach(p => drawPlayer(p, 'blue'));
+
+  arrows.forEach(a => drawArrow(a));
+  picks.forEach(p => drawPick(p));
+  zones.forEach(z => drawZone(z));
+  slides.forEach(s => drawSlide(s));
+
+  if (ball) drawBall(ball);
+}
+
+function drawPlayer(player, color) {
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.arc(player.x, player.y, 15, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = "white";
+  ctx.font = "bold 12px sans-serif";
+  ctx.textAlign = "center";
+  ctx.fillText(player.label, player.x, player.y + 4);
+}
+
+function drawArrow(arrow) {
+  ctx.strokeStyle = arrow.type === 'shot' ? 'red' : 'black';
+  ctx.lineWidth = 2;
+  ctx.setLineDash(arrow.type === 'dashed' ? [10, 5] : []);
+  ctx.beginPath();
+  ctx.moveTo(arrow.x1, arrow.y1);
+  ctx.quadraticCurveTo(arrow.cpX, arrow.cpY, arrow.x2, arrow.y2);
+  ctx.stroke();
+  drawArrowhead(arrow.cpX, arrow.cpY, arrow.x2, arrow.y2, 10, ctx.strokeStyle);
+  ctx.setLineDash([]);
+}
+
+function drawSlide(slide) {
+  ctx.strokeStyle = 'black';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(slide.x1, slide.y1);
+  ctx.quadraticCurveTo(slide.cpX, slide.cpY, slide.x2, slide.y2);
+  ctx.stroke();
+  drawArrowhead(slide.cpX, slide.cpY, slide.x2, slide.y2);
+  ctx.fillStyle = "black";
+  ctx.font = "bold 12px sans-serif";
+  ctx.fillText(slide.label, slide.x2 + 10, slide.y2);
+}
+
+function drawPick(pick) {
+  ctx.strokeStyle = "purple";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.arc(pick.x, pick.y, pick.radius, 0, Math.PI * 2);
+  ctx.stroke();
+}
+
+function drawZone(zone) {
+  ctx.fillStyle = "rgba(128,0,128,0.3)";
+  ctx.beginPath();
+  ctx.arc(zone.x, zone.y, zone.radius, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+function drawBall(ball) {
+  ctx.fillStyle = "orange";
+  ctx.beginPath();
+  ctx.arc(ball.x, ball.y, 8, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+// === Save/Load Functions ===
 function savePlay() {
   try {
     const data = JSON.stringify({ redPlayers, bluePlayers, arrows, picks, zones, slides, ball });
@@ -151,82 +235,123 @@ document.getElementById("save-play").addEventListener("click", savePlay);
 document.getElementById("load-play").addEventListener("click", loadPlay);
 document.getElementById("export-play").addEventListener("click", exportPlay);
 
-// === Add Arrowhead Drawing Helper ===
-function drawArrowhead(fromX, fromY, toX, toY, size = 10, color = "black") {
-  const angle = Math.atan2(toY - fromY, toX - fromX);
-  ctx.fillStyle = color;
-  ctx.beginPath();
-  ctx.moveTo(toX, toY);
-  ctx.lineTo(toX - size * Math.cos(angle - Math.PI / 6), toY - size * Math.sin(angle - Math.PI / 6));
-  ctx.lineTo(toX - size * Math.cos(angle + Math.PI / 6), toY - size * Math.sin(angle + Math.PI / 6));
-  ctx.closePath();
-  ctx.fill();
-}
-
-// === DRAW FUNCTION PLACEHOLDER ===
+draw();
 function draw() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  // Draw zones
+  // Draw Zones
   for (const zone of zones) {
-    ctx.fillStyle = "rgba(128, 0, 128, 0.3)";
     ctx.beginPath();
-    ctx.arc(zone.x, zone.y, zone.radius, 0, Math.PI * 2);
+    ctx.arc(zone.x, zone.y, zone.radius, 0, 2 * Math.PI);
+    ctx.fillStyle = "rgba(0, 255, 0, 0.2)";
     ctx.fill();
-  }
-
-  // Draw picks
-  for (const pick of picks) {
-    ctx.strokeStyle = "black";
-    ctx.beginPath();
-    ctx.arc(pick.x, pick.y, pick.radius, 0, Math.PI * 2);
+    ctx.strokeStyle = "green";
     ctx.stroke();
   }
 
-  // Draw ball
-  if (ball) {
-    ctx.fillStyle = "orange";
+  // Draw Picks
+  for (const pick of picks) {
     ctx.beginPath();
-    ctx.arc(ball.x, ball.y, 10, 0, Math.PI * 2);
-    ctx.fill();
+    ctx.arc(pick.x, pick.y, pick.radius, 0, 2 * Math.PI);
+    ctx.strokeStyle = "orange";
+    ctx.lineWidth = 2;
+    ctx.stroke();
   }
 
-  // Draw arrows
+  // Draw Arrows
   for (const arrow of arrows) {
-    ctx.strokeStyle = arrow.type === "dashed" ? "black" : arrow.type === "shot" ? "red" : "black";
-    ctx.setLineDash(arrow.type === "dashed" ? [10, 5] : []);
     ctx.beginPath();
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = "black";
+    if (arrow.type === "dashed") {
+      ctx.setLineDash([10, 5]);
+    } else if (arrow.type === "shot") {
+      ctx.setLineDash([4, 4]);
+      ctx.strokeStyle = "red";
+    } else {
+      ctx.setLineDash([]);
+    }
+
     ctx.moveTo(arrow.x1, arrow.y1);
     ctx.quadraticCurveTo(arrow.cpX, arrow.cpY, arrow.x2, arrow.y2);
     ctx.stroke();
-    drawArrowhead(arrow.cpX, arrow.cpY, arrow.x2, arrow.y2);
-  }
-  ctx.setLineDash([]);
+    ctx.setLineDash([]);
 
-  // Draw slides
-  for (const slide of slides) {
-    ctx.strokeStyle = "black";
+    drawArrowhead(
+      arrow.cpX,
+      arrow.cpY,
+      arrow.x2,
+      arrow.y2,
+      10,
+      ctx.strokeStyle
+    );
+
+    // Draw control point for curves
     ctx.beginPath();
+    ctx.arc(arrow.cpX, arrow.cpY, controlPointSize, 0, 2 * Math.PI);
+    ctx.fillStyle = "purple";
+    ctx.fill();
+  }
+
+  // Draw Slides
+  for (const slide of slides) {
+    ctx.beginPath();
+    ctx.strokeStyle = "blue";
+    ctx.setLineDash([10, 5]);
     ctx.moveTo(slide.x1, slide.y1);
     ctx.quadraticCurveTo(slide.cpX, slide.cpY, slide.x2, slide.y2);
     ctx.stroke();
-    drawArrowhead(slide.cpX, slide.cpY, slide.x2, slide.y2);
-    ctx.fillStyle = "black";
+    ctx.setLineDash([]);
+
+    drawArrowhead(
+      slide.cpX,
+      slide.cpY,
+      slide.x2,
+      slide.y2,
+      10,
+      "blue"
+    );
+
+    // Draw slide label
+    const labelX = (slide.x1 + slide.x2) / 2;
+    const labelY = (slide.y1 + slide.y2) / 2;
+    ctx.fillStyle = "blue";
     ctx.font = "16px Arial";
-    ctx.fillText(slide.label, slide.x2 + 5, slide.y2);
+    ctx.fillText(slide.label, labelX, labelY);
+
+    // Draw control point
+    ctx.beginPath();
+    ctx.arc(slide.cpX, slide.cpY, controlPointSize, 0, 2 * Math.PI);
+    ctx.fillStyle = "purple";
+    ctx.fill();
   }
 
-  // Draw players
-  [...redPlayers, ...bluePlayers].forEach(player => {
-    if (!player.visible) return;
-    ctx.fillStyle = player.team === "red" ? "red" : "blue";
+  // Draw Players
+  const drawPlayers = (players, color) => {
+    for (const player of players) {
+      if (!player.visible) continue;
+      ctx.beginPath();
+      ctx.arc(player.x, player.y, 20, 0, 2 * Math.PI);
+      ctx.fillStyle = color;
+      ctx.fill();
+      ctx.strokeStyle = "black";
+      ctx.stroke();
+      ctx.fillStyle = "white";
+      ctx.font = "16px Arial";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(player.label, player.x, player.y);
+    }
+  };
+
+  drawPlayers(redPlayers, "red");
+  drawPlayers(bluePlayers, "blue");
+
+  // Draw Ball
+  if (ball) {
     ctx.beginPath();
-    ctx.arc(player.x, player.y, 15, 0, Math.PI * 2);
+    ctx.arc(ball.x, ball.y, 8, 0, 2 * Math.PI);
+    ctx.fillStyle = "black";
     ctx.fill();
-    ctx.fillStyle = "white";
-    ctx.font = "14px Arial";
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillText(player.label, player.x, player.y);
-  });
+  }
 }
