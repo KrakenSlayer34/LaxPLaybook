@@ -355,3 +355,123 @@ function draw() {
     ctx.fill();
   }
 }
+function draw() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // Draw Zones
+  for (const zone of zones) {
+    ctx.beginPath();
+    ctx.arc(zone.x, zone.y, zone.radius, 0, 2 * Math.PI);
+    ctx.fillStyle = "rgba(0, 255, 0, 0.2)";
+    ctx.fill();
+    ctx.strokeStyle = "green";
+    ctx.stroke();
+  }
+
+  // Draw Picks
+  for (const pick of picks) {
+    ctx.beginPath();
+    ctx.arc(pick.x, pick.y, pick.radius, 0, 2 * Math.PI);
+    ctx.strokeStyle = "orange";
+    ctx.lineWidth = 2;
+    ctx.stroke();
+  }
+
+  // Draw Arrows
+  for (const arrow of arrows) {
+    ctx.beginPath();
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = "black";
+    if (arrow.type === "dashed") {
+      ctx.setLineDash([10, 5]);
+    } else if (arrow.type === "shot") {
+      ctx.setLineDash([4, 4]);
+      ctx.strokeStyle = "red";
+    } else {
+      ctx.setLineDash([]);
+    }
+
+    ctx.moveTo(arrow.x1, arrow.y1);
+    ctx.quadraticCurveTo(arrow.cpX, arrow.cpY, arrow.x2, arrow.y2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    drawArrowhead(
+      arrow.cpX,
+      arrow.cpY,
+      arrow.x2,
+      arrow.y2,
+      10,
+      ctx.strokeStyle
+    );
+
+    // Draw control point for curves
+    ctx.beginPath();
+    ctx.arc(arrow.cpX, arrow.cpY, controlPointSize, 0, 2 * Math.PI);
+    ctx.fillStyle = "purple";
+    ctx.fill();
+  }
+
+  // Draw Slides
+  for (const slide of slides) {
+    ctx.beginPath();
+    ctx.strokeStyle = "blue";
+    ctx.setLineDash([10, 5]);
+    ctx.moveTo(slide.x1, slide.y1);
+    ctx.quadraticCurveTo(slide.cpX, slide.cpY, slide.x2, slide.y2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    drawArrowhead(
+      slide.cpX,
+      slide.cpY,
+      slide.x2,
+      slide.y2,
+      10,
+      "blue"
+    );
+
+    // Draw slide label
+    const labelX = (slide.x1 + slide.x2) / 2;
+    const labelY = (slide.y1 + slide.y2) / 2;
+    ctx.fillStyle = "blue";
+    ctx.font = "16px Arial";
+    ctx.fillText(slide.label, labelX, labelY);
+
+    // Draw control point
+    ctx.beginPath();
+    ctx.arc(slide.cpX, slide.cpY, controlPointSize, 0, 2 * Math.PI);
+    ctx.fillStyle = "purple";
+    ctx.fill();
+  }
+
+  // Draw Players
+  const drawPlayers = (players, color) => {
+    for (const player of players) {
+      if (!player.visible) continue;
+      ctx.beginPath();
+      ctx.arc(player.x, player.y, 20, 0, 2 * Math.PI);
+      ctx.fillStyle = color;
+      ctx.fill();
+      ctx.strokeStyle = "black";
+      ctx.stroke();
+      ctx.fillStyle = "white";
+      ctx.font = "16px Arial";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(player.label, player.x, player.y);
+    }
+  };
+
+  drawPlayers(redPlayers, "red");
+  drawPlayers(bluePlayers, "blue");
+
+  // Draw Ball
+  if (ball) {
+    ctx.beginPath();
+    ctx.arc(ball.x, ball.y, 8, 0, 2 * Math.PI);
+    ctx.fillStyle = "black";
+    ctx.fill();
+  }
+}
+
