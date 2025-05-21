@@ -27,7 +27,8 @@ function addPlayer(team) {
     x: 100 + Math.random() * 800,
     y: 100 + Math.random() * 400,
     team: team,
-    label: team === 'red' ? 'R' : 'B'
+    label: team === 'red' ? 'R' : 'B',
+    visible: true
   };
   if (team === 'red') redPlayers.push(player);
   else bluePlayers.push(player);
@@ -90,7 +91,6 @@ function clearBoard() {
   draw();
 }
 
-// === Save/Load Functions ===
 function savePlay() {
   try {
     const data = JSON.stringify({ redPlayers, bluePlayers, arrows, picks, zones, slides, ball });
@@ -128,7 +128,8 @@ function exportPlay() {
   const a = document.createElement("a");
   a.href = url;
   a.download = "lacrosse_play.json";
-  a.click();n  URL.revokeObjectURL(url);
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 // === Button Listeners ===
@@ -163,4 +164,69 @@ function drawArrowhead(fromX, fromY, toX, toY, size = 10, color = "black") {
 }
 
 // === DRAW FUNCTION PLACEHOLDER ===
-// Place full draw logic here to render players, arrows (with arrowheads), zones, ball, etc.
+function draw() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // Draw zones
+  for (const zone of zones) {
+    ctx.fillStyle = "rgba(128, 0, 128, 0.3)";
+    ctx.beginPath();
+    ctx.arc(zone.x, zone.y, zone.radius, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Draw picks
+  for (const pick of picks) {
+    ctx.strokeStyle = "black";
+    ctx.beginPath();
+    ctx.arc(pick.x, pick.y, pick.radius, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+
+  // Draw ball
+  if (ball) {
+    ctx.fillStyle = "orange";
+    ctx.beginPath();
+    ctx.arc(ball.x, ball.y, 10, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Draw arrows
+  for (const arrow of arrows) {
+    ctx.strokeStyle = arrow.type === "dashed" ? "black" : arrow.type === "shot" ? "red" : "black";
+    ctx.setLineDash(arrow.type === "dashed" ? [10, 5] : []);
+    ctx.beginPath();
+    ctx.moveTo(arrow.x1, arrow.y1);
+    ctx.quadraticCurveTo(arrow.cpX, arrow.cpY, arrow.x2, arrow.y2);
+    ctx.stroke();
+    drawArrowhead(arrow.cpX, arrow.cpY, arrow.x2, arrow.y2);
+  }
+  ctx.setLineDash([]);
+
+  // Draw slides
+  for (const slide of slides) {
+    ctx.strokeStyle = "black";
+    ctx.beginPath();
+    ctx.moveTo(slide.x1, slide.y1);
+    ctx.quadraticCurveTo(slide.cpX, slide.cpY, slide.x2, slide.y2);
+    ctx.stroke();
+    drawArrowhead(slide.cpX, slide.cpY, slide.x2, slide.y2);
+    ctx.fillStyle = "black";
+    ctx.font = "16px Arial";
+    ctx.fillText(slide.label, slide.x2 + 5, slide.y2);
+  }
+
+  // Draw players
+  [...redPlayers, ...bluePlayers].forEach(player => {
+    if (!player.visible) return;
+    ctx.fillStyle = player.team === "red" ? "red" : "blue";
+    ctx.beginPath();
+    ctx.arc(player.x, player.y, 15, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "white";
+    ctx.font = "14px Arial";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(player.label, player.x, player.y);
+  });
+}
