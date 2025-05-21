@@ -176,3 +176,7 @@ function drawArrowhead(fromX, fromY, toX, toY, size = 10, color = "black") {
 }
 
 // Use drawArrowhead wherever arrowheads are needed in your draw() function.
+
+// === DRAW FUNCTION WILL BE HERE ===
+// It should iterate through all elements and draw players, arrows, zones, ball, etc.
+// Include logic for dragging, selecting, and rendering with labels and arrowheads
