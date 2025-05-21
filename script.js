@@ -22,47 +22,73 @@ let redoStack = [];
 const slideLabels = ["1", "2", "3"];
 let slideCount = 0;
 
-// === UI Enhancements ===
-const toolbar = document.createElement("div");
-toolbar.id = "toolbar";
-toolbar.style.position = "fixed";
-toolbar.style.bottom = "20px";
-toolbar.style.left = "50%";
-toolbar.style.transform = "translateX(-50%)";
-toolbar.style.backgroundColor = "white";
-toolbar.style.border = "1px solid #ccc";
-toolbar.style.borderRadius = "10px";
-toolbar.style.padding = "10px";
-toolbar.style.display = "flex";
-toolbar.style.gap = "10px";
-toolbar.style.zIndex = 1000;
-toolbar.innerHTML = `
-  <label>Color: <input type="color" id="toolbar-color"></label>
-  <label>Label: <input type="text" id="toolbar-label" maxlength="3"></label>
-  <label>Zone Radius: <input type="range" id="toolbar-radius" min="20" max="200"></label>
-`;
-document.body.appendChild(toolbar);
+function addPlayer(team) {
+  const player = {
+    x: 100 + Math.random() * 800,
+    y: 100 + Math.random() * 400,
+    team: team,
+    label: team === 'red' ? 'R' : 'B'
+  };
+  if (team === 'red') redPlayers.push(player);
+  else bluePlayers.push(player);
+  draw();
+}
 
-document.getElementById("toolbar-color").addEventListener("input", e => {
-  if (selectedElement && selectedElement.color !== undefined) {
-    selectedElement.color = e.target.value;
-    draw();
-  }
-});
+function toggleTeam(team) {
+  const players = team === 'red' ? redPlayers : bluePlayers;
+  players.forEach(p => p.visible = !p.visible);
+  draw();
+}
 
-document.getElementById("toolbar-label").addEventListener("input", e => {
-  if (selectedElement && selectedElement.label !== undefined) {
-    selectedElement.label = e.target.value;
-    draw();
-  }
-});
+function addBall() {
+  ball = { x: 500, y: 300 };
+  draw();
+}
 
-document.getElementById("toolbar-radius").addEventListener("input", e => {
-  if (selectedElement && selectedElement.radius !== undefined) {
-    selectedElement.radius = parseInt(e.target.value);
-    draw();
-  }
-});
+function addArrow(type) {
+  arrows.push({
+    x1: 200, y1: 200,
+    x2: 400, y2: 300,
+    type,
+    cpX: 300, cpY: 250
+  });
+  draw();
+}
+
+function addPick() {
+  picks.push({ x: 300, y: 300, radius: 20 });
+  draw();
+}
+
+function addZone() {
+  zones.push({ x: 400, y: 300, radius: 80 });
+  draw();
+}
+
+function addSlide(type) {
+  slides.push({
+    x1: 200 + slides.length * 20,
+    y1: 200,
+    x2: 400 + slides.length * 20,
+    y2: 300,
+    type,
+    label: type,
+    cpX: 300 + slides.length * 20,
+    cpY: 250
+  });
+  draw();
+}
+
+function clearBoard() {
+  redPlayers = [];
+  bluePlayers = [];
+  arrows = [];
+  picks = [];
+  zones = [];
+  slides = [];
+  ball = null;
+  draw();
+}
 
 // === Save/Load Functions ===
 function savePlay() {
@@ -95,73 +121,34 @@ function loadPlay() {
 }
 
 function exportPlay() {
-  const tempDraw = draw;
-  draw = () => {
-    drawBoard(true);
-  };
   draw();
-
   const data = JSON.stringify({ redPlayers, bluePlayers, arrows, picks, zones, slides, ball });
   const blob = new Blob([data], { type: "application/json" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
   a.download = "lacrosse_play.json";
-  a.click();
-  URL.revokeObjectURL(url);
-
-  draw = tempDraw;
-  draw();
+  a.click();n  URL.revokeObjectURL(url);
 }
 
+// === Button Listeners ===
+document.getElementById("add-red-player").addEventListener("click", () => addPlayer("red"));
+document.getElementById("add-blue-player").addEventListener("click", () => addPlayer("blue"));
+document.getElementById("toggle-red-team").addEventListener("click", () => toggleTeam("red"));
+document.getElementById("toggle-blue-team").addEventListener("click", () => toggleTeam("blue"));
+document.getElementById("add-ball").addEventListener("click", addBall);
+document.getElementById("add-solid-arrow").addEventListener("click", () => addArrow("solid"));
+document.getElementById("add-dashed-arrow").addEventListener("click", () => addArrow("dashed"));
+document.getElementById("add-shot").addEventListener("click", () => addArrow("shot"));
+document.getElementById("add-hot-slide").addEventListener("click", () => addSlide("1"));
+document.getElementById("add-second-slide").addEventListener("click", () => addSlide("2"));
+document.getElementById("add-third-slide").addEventListener("click", () => addSlide("3"));
+document.getElementById("add-pick").addEventListener("click", addPick);
+document.getElementById("add-zone").addEventListener("click", addZone);
+document.getElementById("clear-board").addEventListener("click", clearBoard);
 document.getElementById("save-play").addEventListener("click", savePlay);
 document.getElementById("load-play").addEventListener("click", loadPlay);
 document.getElementById("export-play").addEventListener("click", exportPlay);
-
-// === Helper UI Toggle ===
-function updateToolbarForSelection() {
-  if (!selectedElement) return;
-  if (selectedElement.color !== undefined) {
-    document.getElementById("toolbar-color").value = selectedElement.color;
-  }
-  if (selectedElement.label !== undefined) {
-    document.getElementById("toolbar-label").value = selectedElement.label;
-  }
-  if (selectedElement.radius !== undefined) {
-    document.getElementById("toolbar-radius").value = selectedElement.radius;
-  }
-}
-
-document.addEventListener("click", () => {
-  updateToolbarForSelection();
-});
-
-// === Make Player Labels Editable on Click ===
-canvas.addEventListener("dblclick", e => {
-  const rect = canvas.getBoundingClientRect();
-  const x = e.clientX - rect.left;
-  const y = e.clientY - rect.top;
-  for (let player of [...redPlayers, ...bluePlayers]) {
-    if (Math.hypot(player.x - x, player.y - y) < 15) {
-      const input = document.createElement("input");
-      input.type = "text";
-      input.value = player.label || "";
-      input.style.position = "absolute";
-      input.style.left = `${e.clientX}px`;
-      input.style.top = `${e.clientY}px`;
-      input.style.zIndex = 1001;
-      input.style.fontSize = "14px";
-      document.body.appendChild(input);
-      input.focus();
-      input.addEventListener("blur", () => {
-        player.label = input.value;
-        document.body.removeChild(input);
-        draw();
-      });
-      return;
-    }
-  }
-});
 
 // === Add Arrowhead Drawing Helper ===
 function drawArrowhead(fromX, fromY, toX, toY, size = 10, color = "black") {
@@ -175,8 +162,5 @@ function drawArrowhead(fromX, fromY, toX, toY, size = 10, color = "black") {
   ctx.fill();
 }
 
-// Use drawArrowhead wherever arrowheads are needed in your draw() function.
-
-// === DRAW FUNCTION WILL BE HERE ===
-// It should iterate through all elements and draw players, arrows, zones, ball, etc.
-// Include logic for dragging, selecting, and rendering with labels and arrowheads
+// === DRAW FUNCTION PLACEHOLDER ===
+// Place full draw logic here to render players, arrows (with arrowheads), zones, ball, etc.
